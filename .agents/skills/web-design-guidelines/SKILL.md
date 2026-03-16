@@ -26,7 +26,11 @@ Fetch fresh guidelines before each review:
 https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
 ```
 
-Use WebFetch to retrieve the latest rules. The fetched content contains all the rules and output format instructions.
+You MUST fetch the guidelines before reviewing any code. Try these methods in order:
+1. Use WebFetch to retrieve the URL above
+2. If WebFetch is unavailable, use Bash: `curl -sL "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md"`
+
+The fetched content contains all the rules and output format instructions. Do not skip this step — always attempt the fetch.
 
 ## Output Format
 
