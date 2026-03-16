@@ -15,7 +15,7 @@ Replace the current GitHub Dark palette with a Slate + Glassmorphism theme.
 | Token | Current | New | Notes |
 |-------|---------|-----|-------|
 | `bg_primary` | `#0d1117` | `#0f172a` | Slate 900 |
-| `bg_secondary` | `#161b22` | `rgba(255,255,255,0.05)` + `backdrop-filter:blur(12px)` | Glass effect |
+| `bg_secondary` | `#161b22` | `#1e293b` | Slate 800 (used as token value; glassmorphism via CSS only) |
 | `bg_tertiary` | `#070b0f` | `#020617` | Slate 950 |
 | `border` | `#30363d` | `rgba(255,255,255,0.1)` | Semi-transparent |
 | `border_light` | `#21262d` | `rgba(255,255,255,0.05)` | Subtle separator |
@@ -44,18 +44,75 @@ Replace the current GitHub Dark palette with a Slate + Glassmorphism theme.
 | bull | `rgba(63,185,80,.12)` | `rgba(74,222,128,.10)` |
 | bear | `rgba(248,81,73,.12)` | `rgba(248,113,113,.10)` |
 | neutral | `rgba(139,148,158,.10)` | `rgba(148,163,184,.08)` |
+| chop | _(missing)_ | `rgba(251,191,36,.08)` |
+
+**Note on `chop`:** In the existing codebase, `chop` is a CSS class alias for the `neutral` role, not a distinct model output. The `render_regime_banner()` function maps `neutral` role → `chop` CSS class. Models only output `bull`, `bear`, and `neutral`. The `chop` entry in `ROLE_COLOR_BG` is used exclusively for banner/chart styling of the neutral regime. No changes needed to model outputs.
+
+### MODEL_COLORS Updates
+
+| Model | Current | New |
+|-------|---------|-----|
+| HMM | `#58a6ff` | `#60a5fa` |
+| GMM | `#a371f7` | `#a78bfa` |
+| K-Means | `#f0b429` | `#fbbf24` |
+| GARCH | `#f85149` | `#f87171` |
+| Ensemble | `#3fb950` | `#4ade80` |
 
 ### Plotly Theme Updates
 
 - `paper_bgcolor` and `plot_bgcolor`: `#0f172a`
-- Legend background: `rgba(255,255,255,0.05)`
+- Legend background: `rgba(255,255,255,0.05)` (rgba color only, no `backdrop-filter` — Plotly does not support CSS filters)
 - Legend border: `rgba(255,255,255,0.1)`
 - Grid color: `rgba(255,255,255,0.06)`
 - Chart bars use `linear-gradient` style via marker color arrays
 
+### Glassmorphism Note
+
+`COLORS["bg_secondary"]` stores a plain hex value (`#1e293b`). The glassmorphism effects (`backdrop-filter: blur(12px)`, `rgba` backgrounds, glowing borders) are applied only through CSS rules in `SHARED_CSS`, not as color tokens. This keeps the token system compatible with Plotly and inline Python f-strings.
+
+### Regime Banner Background Updates
+
+| Banner | Current | New |
+|--------|---------|-----|
+| `.regime-banner.bull` | `#0f2a17` | `rgba(74,222,128,0.08)` |
+| `.regime-banner.bear` | `#2a0f0f` | `rgba(248,113,113,0.08)` |
+| `.regime-banner.chop` | `#1c1c1c` | `rgba(148,163,184,0.06)` |
+
+### Sidebar Styling
+
+The sidebar keeps a solid background (`#0f172a`) rather than glassmorphism, since there is no meaningful content behind it for blur to act on. Border updated to `rgba(255,255,255,0.08)`.
+
+### Hardcoded Inline Colors
+
+The following inline `style=` attributes in page files must be manually updated to use new palette values:
+
+**`app.py`:**
+- Line 42: `color:#58a6ff` → `color:#60a5fa`
+- Line 48: `color:#a371f7` → `color:#a78bfa`
+- Line 56: `color:#f0b429` → `color:#fbbf24`
+- Line 64: `color:#f85149` → `color:#f87171`
+- Line 72: `color:#3fb950` → `color:#4ade80`
+- Line 79: `border-top:3px solid #8b949e` → `border-top:3px solid #94a3b8`
+- Line 92: `background:#161b22;border:1px solid #30363d` → `background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px)`
+- All `color:#8b949e` → `color:#94a3b8`
+- All `color:#e6edf3` → `color:#f1f5f9`
+- All `color:#58a6ff` (step numbers) → `color:#60a5fa`
+
+**`pages/5_Compare.py`:**
+- Inline `ROLE_BG` dict must be removed and replaced with `ROLE_COLOR_BG` from `core/theme.py`
+
+**All page files (`pages/1_HMM.py`, `pages/2_GMM.py`, `pages/3_K-Means.py`):**
+- Sidebar text colors: `color:#8b949e` → `color:#94a3b8`, `color:#e6edf3` → `color:#f1f5f9`
+- Bull/bear/neutral inline colors updated to new values
+
 ### Files Changed
 
-- `core/theme.py`: Update `COLORS`, `ROLE_COLOR_BG`, `SHARED_CSS`, `plotly_base_layout()`, `plotly_axis_style()`
+- `core/theme.py`: Update `COLORS`, `MODEL_COLORS`, `ROLE_COLOR_BG`, `SHARED_CSS`, `plotly_base_layout()`, `plotly_axis_style()`
+- `app.py`: Replace all hardcoded inline color values with new palette
+- `pages/1_HMM.py`: Replace inline color values
+- `pages/2_GMM.py`: Replace inline color values
+- `pages/3_K-Means.py`: Replace inline color values
+- `pages/5_Compare.py`: Replace inline `ROLE_BG` dict + inline color values
 
 ---
 
@@ -99,6 +156,41 @@ States: [2]
 - Uses `st.session_state` with page-specific keys (e.g., `hmm_ticker`, `hmm_lookback`)
 - Each page calls `render_presets()` in its sidebar block before the input fields
 
+#### `render_presets()` pseudocode
+
+```python
+def render_presets(page_key: str) -> dict:
+    """
+    Render preset buttons and return current config values.
+    Returns: {"ticker": str, "lookback": int, "n_states": int}
+    """
+    # Initialize session state defaults if not set
+    if f"{page_key}_preset" not in st.session_state:
+        st.session_state[f"{page_key}_preset"] = None
+
+    # Render preset buttons as columns
+    cols = st.columns(len(PRESETS))
+    for i, (name, config) in enumerate(PRESETS.items()):
+        with cols[i]:
+            if st.button(name, key=f"{page_key}_preset_{name}"):
+                st.session_state[f"{page_key}_preset"] = name
+                st.session_state[f"{page_key}_ticker"] = config["ticker"]
+                st.session_state[f"{page_key}_lookback"] = config["lookback"]
+                st.session_state[f"{page_key}_n_states"] = config["n_states"]
+                st.rerun()
+
+    # Return current values (preset or custom)
+    return {
+        "ticker": st.session_state.get(f"{page_key}_ticker", "SPY"),
+        "lookback": st.session_state.get(f"{page_key}_lookback", 10),
+        "n_states": st.session_state.get(f"{page_key}_n_states", 3),
+    }
+```
+
+- Pages read values via: `config = render_presets("hmm")`
+- Custom detection: if user changes any input field via `on_change` callback, set `st.session_state[f"{page_key}_preset"] = None`
+- Compare page uses the same presets (same ticker/lookback/states apply to all 3 models)
+
 ### Files Changed
 
 - `core/theme.py`: Add `PRESETS` dict, `render_presets()` function, preset button CSS
@@ -137,16 +229,33 @@ Before data loads, show placeholder cards with shimmer animation:
 
 ```python
 def render_skeleton(n_cards=3):
-    """Show skeleton placeholder cards while loading."""
-    # Renders gray pulsing cards matching metric-card dimensions
-    # + chart placeholder rectangle
-    # + regime banner placeholder
+    """Show skeleton placeholder cards while loading. Returns HTML string."""
+    cards = ""
+    for _ in range(n_cards):
+        cards += """
+        <div class="metric-card" style="min-height:90px">
+          <div class="skeleton-block" style="width:60px;height:10px;margin-bottom:8px"></div>
+          <div class="skeleton-block" style="width:120px;height:16px;margin-bottom:12px"></div>
+          <div style="display:flex;gap:16px">
+            <div class="skeleton-block" style="flex:1;height:24px"></div>
+            <div class="skeleton-block" style="flex:1;height:24px"></div>
+            <div class="skeleton-block" style="flex:1;height:24px"></div>
+          </div>
+        </div>"""
+
+    chart_placeholder = '<div class="skeleton-block" style="height:420px;margin:10px 0"></div>'
+    banner_placeholder = '<div class="skeleton-block" style="height:80px;margin-top:10px;border-radius:8px"></div>'
+
+    return f'<div class="metric-grid">{cards}</div>{chart_placeholder}{banner_placeholder}'
 ```
 
-Uses `st.empty()` containers:
-1. Create `placeholder = st.empty()`
-2. Render skeleton into placeholder
-3. After data loads, replace with real content via `placeholder.empty()` + render real components
+### Visual Sequencing
+
+1. User clicks "Run Analysis"
+2. **Skeleton cards + chart placeholder** appear immediately in the main content area (via `st.empty()`)
+3. **`st.status()` widget** appears above the skeleton, showing staged progress messages
+4. When loading completes, `st.status()` collapses with "Complete!" state
+5. Skeleton placeholders are replaced with real content via `placeholder.empty()` + render real components
 
 ### Shimmer CSS
 
@@ -203,10 +312,24 @@ Add smooth entrance animations for UI elements.
 
 | Element | Animation | Duration | Delay |
 |---------|-----------|----------|-------|
-| `.metric-card` | `fadeInUp` | 0.4s | `nth-child` staggered (0.05s each) |
+| `.metric-card` | `fadeInUp` | 0.4s | staggered (see CSS below) |
 | `.hero` | `fadeIn` | 0.3s | none |
 | `.regime-banner` | `scaleIn` | 0.5s | none |
 | Plotly chart container | `fadeIn` | 0.4s | none |
+
+#### Staggered Card Animation CSS
+
+```css
+.metric-card {
+    animation: fadeInUp 0.4s ease both;
+}
+.metric-grid > .metric-card:nth-child(1) { animation-delay: 0s; }
+.metric-grid > .metric-card:nth-child(2) { animation-delay: 0.05s; }
+.metric-grid > .metric-card:nth-child(3) { animation-delay: 0.10s; }
+.metric-grid > .metric-card:nth-child(4) { animation-delay: 0.15s; }
+.metric-grid > .metric-card:nth-child(5) { animation-delay: 0.20s; }
+.metric-grid > .metric-card:nth-child(6) { animation-delay: 0.25s; }
+```
 
 ### Accessibility
 
@@ -234,6 +357,20 @@ Add smooth entrance animations for UI elements.
 | `pages/2_GMM.py` | Presets integration, skeleton + status loading |
 | `pages/3_K-Means.py` | Presets integration, skeleton + status loading |
 | `pages/5_Compare.py` | Presets integration, skeleton + status loading |
-| `app.py` | Updated to use new glass theme (automatic via theme.py) |
+| `app.py` | Replace all hardcoded inline colors with new palette values |
 
 No new files created. No structural changes. All updates are within existing files.
+
+---
+
+## Additional Cleanup (Pre-existing Issues)
+
+- **`st.plotly_chart` parameter:** Replace `width="stretch"` with `use_container_width=True` in all page files (the `width` parameter is not a valid Streamlit API)
+- **Hero gradient:** Update `linear-gradient(90deg, #58a6ff, #3fb950)` → `linear-gradient(90deg, #60a5fa, #4ade80)` in `SHARED_CSS`
+- **`SHARED_CSS` hardcoded colors:** All hex values inside `SHARED_CSS` (e.g., `#0d1117`, `#161b22`, `#30363d`, `#3fb950`, `#f85149`, `#8b949e`) must be updated to match the new palette. The implementer should do a find-and-replace pass across all CSS rules in the string.
+
+---
+
+## Requirements
+
+- **Streamlit >= 1.30.0** (already satisfied in `requirements.txt` — covers `st.status()` which was introduced in 1.25)
