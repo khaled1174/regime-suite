@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.theme import (
     apply_theme, disclaimer, footer, COLORS, MODEL_COLORS,
     plotly_base_layout, plotly_axis_style,
-    ROLE_COLOR_LINE, ROLE_NAME, ROLE_EMOJI,
+    ROLE_COLOR_LINE, ROLE_COLOR_BG, ROLE_NAME, ROLE_EMOJI,
+    render_presets, render_skeleton,
 )
 from core.data import load_market_data, get_observation_matrix
 from core.models import fit_hmm, fit_gmm, fit_kmeans, ensemble_vote
@@ -28,18 +29,20 @@ disclaimer()
 with st.sidebar:
     st.markdown("## ⚔️ Comparison Config")
     st.markdown("---")
-    ticker = st.text_input("Ticker Symbol", value="SPY").upper().strip()
-    lookback = st.slider("Lookback (years)", 2, 15, 10)
-    n_states = st.selectbox("Number of States", [2, 3, 4], index=1)
+    config = render_presets("compare")
+    st.markdown("---")
+    ticker = st.text_input("Ticker Symbol", value=config["ticker"], key="compare_ticker_input").upper().strip()
+    lookback = st.slider("Lookback (years)", 2, 15, value=config["lookback"], key="compare_lookback_input")
+    n_states = st.selectbox("Number of States", [2, 3, 4], index=[2, 3, 4].index(config["n_states"]) if config["n_states"] in [2, 3, 4] else 1, key="compare_states_input")
     st.markdown("---")
     run_btn = st.button("🚀 Run All Models")
     st.markdown("---")
     st.markdown("""
-    <div style='color:#8b949e;font-size:.78rem;line-height:1.6'>
-    <b style='color:#e6edf3'>What this does</b><br>
+    <div style='color:#94a3b8;font-size:.78rem;line-height:1.6'>
+    <b style='color:#f1f5f9'>What this does</b><br>
     Runs HMM, GMM, and K-Means on <em>identical data</em>,
     then compares how each model classifies every day.<br><br>
-    <b style='color:#3fb950'>Agreement Score</b> = % of days where
+    <b style='color:#4ade80'>Agreement Score</b> = % of days where
     all models assign the same role.
     </div>
     """, unsafe_allow_html=True)
@@ -55,32 +58,41 @@ st.markdown("""
 
 if not run_btn:
     st.markdown("""
-    <div style='text-align:center;padding:80px 0;color:#8b949e'>
+    <div style='text-align:center;padding:80px 0;color:#94a3b8'>
       <div style='font-size:3rem;margin-bottom:16px'>⚔️</div>
-      <p style='font-size:1.1rem;margin:0'>Click <b style="color:#3fb950">Run All Models</b> to compare</p>
+      <p style='font-size:1.1rem;margin:0'>Click <b style="color:#4ade80">Run All Models</b> to compare</p>
     </div>
     """, unsafe_allow_html=True)
     st.stop()
 
 # ── Data ──────────────────────────────────────────────────────────────────────
-with st.spinner(f"Downloading {ticker} data…"):
+placeholder = st.empty()
+placeholder.markdown(render_skeleton(n_cards=4), unsafe_allow_html=True)
+
+with st.status("Running analysis...", expanded=True) as status:
+    status.update(label="Downloading market data...")
     df = load_market_data(ticker, lookback)
 
-if df.empty:
-    st.error(f"❌ No data for **{ticker}**.")
-    st.stop()
+    if df.empty:
+        placeholder.empty()
+        st.error(f"❌ No data for **{ticker}**.")
+        st.stop()
 
-X = get_observation_matrix(df)
-log_ret = df["log_ret"].values
-real_vol = df["real_vol"].values
+    X = get_observation_matrix(df)
+    log_ret = df["log_ret"].values
+    real_vol = df["real_vol"].values
 
-# ── Fit All Models ────────────────────────────────────────────────────────────
-with st.spinner("Training HMM…"):
+    # ── Fit All Models ────────────────────────────────────────────────────────
+    status.update(label="Training HMM...")
     hmm_result = fit_hmm(X, log_ret, real_vol, n_states=n_states)
-with st.spinner("Training GMM…"):
+    status.update(label="Training GMM...")
     gmm_result = fit_gmm(X, log_ret, real_vol, n_states=n_states)
-with st.spinner("Training K-Means…"):
+    status.update(label="Training K-Means...")
     km_result = fit_kmeans(X, log_ret, real_vol, n_states=n_states)
+
+    status.update(label="Complete!", state="complete", expanded=False)
+
+placeholder.empty()
 
 # ── Ensemble Vote ─────────────────────────────────────────────────────────────
 ensemble = ensemble_vote([hmm_result, gmm_result, km_result])
@@ -139,13 +151,11 @@ fig.add_trace(go.Scatter(
 df_ens = df.copy()
 df_ens["role"] = ensemble.roles
 df_ens["_seg_id"] = (df_ens["role"] != df_ens["role"].shift()).cumsum()
-ROLE_BG = {"bull": "rgba(63,185,80,.12)", "bear": "rgba(248,81,73,.12)", "neutral": "rgba(139,148,158,.08)"}
-
 for _, seg in df_ens.groupby("_seg_id"):
     role = seg["role"].iloc[0]
     fig.add_vrect(
         x0=seg.index[0], x1=seg.index[-1],
-        fillcolor=ROLE_BG.get(role, "rgba(139,148,158,.05)"),
+        fillcolor=ROLE_COLOR_BG.get(role, "rgba(148,163,184,.05)"),
         line_width=0, row=1, col=1,
     )
 
@@ -194,7 +204,7 @@ fig.update_yaxes(tickvals=[-1, 0, 1], ticktext=["Bear", "Neutral", "Bull"], row=
 
 fig.update_annotations(font=dict(color=COLORS["text_secondary"], size=11))
 
-st.plotly_chart(fig, width="stretch")
+st.plotly_chart(fig, use_container_width=True)
 
 # ── Agreement Over Time ──────────────────────────────────────────────────────
 st.markdown("### Agreement Score Over Time")
@@ -207,7 +217,7 @@ fig_agree.add_trace(go.Scatter(
     line=dict(color=COLORS["bull"], width=1.5),
     name="20-day Rolling Agreement",
     fill="tozeroy",
-    fillcolor="rgba(63,185,80,.1)",
+    fillcolor="rgba(74,222,128,.1)",
 ))
 fig_agree.add_hline(y=0.67, line_dash="dash", line_color=COLORS["chop"],
                     annotation_text="2/3 threshold", annotation_position="top right")
@@ -217,7 +227,7 @@ fig_agree.update_layout(
     yaxis=dict(**plotly_axis_style(), title="Agreement %", range=[0, 1.05]),
     xaxis=dict(**plotly_axis_style()),
 )
-st.plotly_chart(fig_agree, width="stretch")
+st.plotly_chart(fig_agree, use_container_width=True)
 
 # ── Disagreement Table ────────────────────────────────────────────────────────
 with st.expander("📊 Recent Classification Comparison (last 20 days)"):
@@ -229,7 +239,7 @@ with st.expander("📊 Recent Classification Comparison (last 20 days)"):
         "Ensemble": [f"{ROLE_EMOJI.get(r,'')} {r}" for r in ensemble.roles[-20:]],
         "Agreement": [f"{a*100:.0f}%" for a in agreement[-20:]],
     })
-    st.dataframe(compare_df, width="stretch", hide_index=True)
+    st.dataframe(compare_df, use_container_width=True, hide_index=True)
 
 # ── Consensus Banner ──────────────────────────────────────────────────────────
 consensus_role = ensemble.roles[-1]
