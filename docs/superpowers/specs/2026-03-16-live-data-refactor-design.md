@@ -143,9 +143,24 @@ async function fetchData(ticker, years) → { prices: number[], dates: string[] 
 
 // Compute — all pure functions
 function computeAll(prices, dates, K) → {
-  rets, datesR, pricesR, vols, gVol,
-  hReg, hmmStats, gmm, km, gReg, ens, K,
-  lastPrice, prevPrice, curRegimes
+  rets: number[],           // log returns
+  datesR: string[],         // dates aligned to returns (dates.slice(1))
+  pricesR: number[],        // prices aligned to returns (prices.slice(1))
+  vols: number[],           // rolling 20d annualized vol
+  gVol: number[],           // GARCH conditional vol (annualized %)
+  hReg: number[],           // HMM regime labels [0,1,2]
+  hmmStats: {ret,vol,pct}[],// per-state mean return, mean vol, % of time (3 items)
+  hmmBull: number[],        // binary array: 1 if hReg===0, else 0
+  gmm: {bull[],neut[],bear[]}, // GMM probability arrays
+  km: {labels[],cents[],sorted[]}, // from runKMeans
+  kmLabels: number[],       // remapped labels after centroid sorting
+  gReg: {labels[],loThr,hiThr}, // from garchRegimes
+  ensBull: number[],        // per-day ensemble score (0-4)
+  ensLabel: number,         // final ensemble verdict (0/1/2)
+  curRegimes: {hmm,gmm,km,garch}, // current-day regime per model
+  lastPrice: number,
+  prevPrice: number,
+  K: number
 }
 function runKMeans(rets, vols, K) → { labels: number[], cents: object[], sorted: array }
 function garchRegimes(gVol) → { labels: number[], loThr: number, hiThr: number }
@@ -181,8 +196,29 @@ function go(model)
 
 ### Dead Code Removal
 
-- `rollRet()` (line 307) — defined but never used, remove it
+- `rollRet()` call on line 403 — result `rrets` is assigned but never consumed downstream. Remove the call first, then remove the function definition on line 307.
 - `globalData` (line 380) — declared but never used, remove it
+
+### Additional `innerHTML` Violations
+
+Lines 589 and 593 use `btn.innerHTML` with HTML entities:
+```js
+btn.innerHTML = '↺ Refresh';      // line 589
+btn.innerHTML = '▶ Run Analysis'; // line 593
+```
+Fix: use `textContent` with unicode directly:
+```js
+btn.textContent = '\u21BA Refresh';       // ↺
+btn.textContent = '\u25B6 Run Analysis';  // ▶
+```
+
+---
+
+## Allowed Patterns
+
+- `.style.color = ...` and `.style.width = ...` — allowed for dynamic regime colors and transition bar widths. These are data-driven values that change per-run and cannot be pre-defined as CSS classes.
+- `.textContent = ...` — the primary method for all DOM text updates.
+- `classList.add/remove('hidden','visible')` — the only method for show/hide.
 
 ---
 
