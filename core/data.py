@@ -5,24 +5,51 @@ Single source of truth for market data across all pages.
 """
 
 import streamlit as st
-import yfinance as yf
 import numpy as np
 import pandas as pd
 import warnings
-import concurrent.futures
+import requests
 
 warnings.filterwarnings("ignore")
 
 
-def _download_yf(ticker, start, end):
-    """Run yfinance download in a thread so we can enforce a timeout."""
-    return yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
+def _download_yahoo(ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+    """
+    Download data directly from Yahoo Finance chart API.
+    Bypasses yfinance to avoid hanging on Streamlit Cloud.
+    """
+    period1 = int(start.timestamp())
+    period2 = int(end.timestamp())
+    url = (
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+        f"?period1={period1}&period2={period2}&interval=1d"
+    )
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    resp = requests.get(url, headers=headers, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+
+    result = data["chart"]["result"][0]
+    timestamps = result["timestamp"]
+    quote = result["indicators"]["quote"][0]
+    adjclose = result["indicators"]["adjclose"][0]["adjclose"]
+
+    df = pd.DataFrame({
+        "Close": adjclose,
+        "Volume": quote["volume"],
+    }, index=pd.to_datetime(timestamps, unit="s", utc=True))
+
+    df.index = df.index.tz_convert(None).normalize()
+    df.index.name = "Date"
+    df.dropna(subset=["Close"], inplace=True)
+    return df
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_market_data(ticker: str, lookback_years: int = 10) -> pd.DataFrame:
     """
-    Download OHLCV data from yfinance and compute features.
+    Download OHLCV data and compute features.
 
     Returns DataFrame with columns:
         Close, Volume, log_ret, real_vol, norm_vol
@@ -30,21 +57,24 @@ def load_market_data(ticker: str, lookback_years: int = 10) -> pd.DataFrame:
     end = pd.Timestamp.today().normalize()
     start = end - pd.DateOffset(years=lookback_years)
 
+    # Try direct Yahoo API first (works on all Python versions)
     try:
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            future = pool.submit(_download_yf, ticker, start, end)
-            raw = future.result(timeout=30)
+        df = _download_yahoo(ticker, start, end)
     except Exception:
+        # Fallback to yfinance
+        try:
+            import yfinance as yf
+            raw = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
+            if raw.empty:
+                return pd.DataFrame()
+            if isinstance(raw.columns, pd.MultiIndex):
+                raw.columns = raw.columns.get_level_values(0)
+            df = raw[["Close", "Volume"]].copy()
+        except Exception:
+            return pd.DataFrame()
+
+    if df.empty:
         return pd.DataFrame()
-
-    if raw.empty:
-        return pd.DataFrame()
-
-    # Flatten multi-index if present (yfinance >= 0.2.31)
-    if isinstance(raw.columns, pd.MultiIndex):
-        raw.columns = raw.columns.get_level_values(0)
-
-    df = raw[["Close", "Volume"]].copy()
 
     # ── Feature Engineering ────────────────────────────────────────────────
     # 1. Log returns
