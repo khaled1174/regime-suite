@@ -8,19 +8,25 @@ import streamlit as st
 import sys
 from pathlib import Path
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
-
-from core.theme import apply_theme, disclaimer, footer
-
 st.set_page_config(
     page_title="Regime Suite",
     page_icon="📡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-apply_theme()
-disclaimer()
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from core.theme import apply_theme, disclaimer, footer
+    apply_theme()
+    disclaimer()
+except Exception as e:
+    st.error(f"Theme load error: {e}")
+    import traceback
+    st.code(traceback.format_exc())
+    def footer(): pass
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
