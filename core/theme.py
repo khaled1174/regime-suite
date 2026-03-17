@@ -71,38 +71,13 @@ SHARED_CSS = """
     html, body, [class*="css"] {
         font-family: 'Inter', 'Segoe UI', sans-serif;
     }
-    .stApp {
-        background-color: #0f172a; color: #f1f5f9;
-        position: relative;
-    }
-    /* Background glows */
-    .stApp::before {
-        content: '';
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background:
-            radial-gradient(circle at 80% 20%, rgba(167,139,250,0.10), transparent 50%),
-            radial-gradient(circle at 20% 80%, rgba(139,92,246,0.08), transparent 50%);
-        pointer-events: none;
-        z-index: -1;
-    }
-    section[data-testid="stSidebar"] {
-        background-color: #0f172a;
-        border-right: 1px solid rgba(255,255,255,0.08);
-    }
-    section[data-testid="stSidebar"] * { color: #f1f5f9 !important; }
-    header[data-testid="stHeader"] { background: #0f172a !important; }
-    [data-testid="stAppViewContainer"] { background: #0f172a !important; }
 
-    /* ── CRITICAL: Kill Streamlit's default padding ── */
+    /* ── Layout tweaks ── */
     .block-container {
-        position: relative;
-        z-index: 1;
         background: transparent !important;
         padding-top: 3rem !important;
         padding-bottom: 0 !important;
     }
-    .element-container { margin-bottom: 0 !important; }
-    [data-testid="stVerticalBlock"] > [style*="flex-direction"] { gap: 0.3rem !important; }
 
     /* ── Hero (compact single-line) ── */
     .hero {
