@@ -21,15 +21,18 @@ def load_market_data(ticker: str, lookback_years: int = 10) -> pd.DataFrame:
     Returns DataFrame with columns:
         Close, Volume, log_ret, real_vol, norm_vol
     """
-    end = pd.Timestamp.today()
+    end = pd.Timestamp.today().normalize()
     start = end - pd.DateOffset(years=lookback_years)
 
-    raw = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
+    try:
+        raw = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
+    except Exception:
+        return pd.DataFrame()
 
     if raw.empty:
         return pd.DataFrame()
 
-    # Flatten multi-index if present
+    # Flatten multi-index if present (yfinance >= 0.2.31)
     if isinstance(raw.columns, pd.MultiIndex):
         raw.columns = raw.columns.get_level_values(0)
 

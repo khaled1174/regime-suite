@@ -92,11 +92,11 @@ st.markdown("""
 <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px);border-radius:10px;padding:24px 28px;margin-top:8px">
   <div style="font-weight:700;font-size:1rem;color:#f1f5f9;margin-bottom:12px">How to use</div>
   <div style="color:#94a3b8;font-size:.88rem;line-height:1.8">
-    <b style="color:#60a5fa">1.</b> Use the sidebar to navigate between models.<br>
-    <b style="color:#60a5fa">2.</b> Each model page lets you pick a ticker and run the analysis.<br>
-    <b style="color:#60a5fa">3.</b> The <b style="color:#f1f5f9">Compare</b> page runs all models on the same data side by side.<br>
-    <b style="color:#60a5fa">4.</b> The <b style="color:#f1f5f9">Ensemble</b> page combines them via majority vote.<br>
-    <b style="color:#60a5fa">5.</b> The <b style="color:#f1f5f9">Backtest Lab</b> routes each regime to the correct sub-strategy.
+    <b style="color:#a78bfa">1.</b> Use the sidebar to navigate between models.<br>
+    <b style="color:#a78bfa">2.</b> Each model page lets you pick a ticker and run the analysis.<br>
+    <b style="color:#a78bfa">3.</b> The <b style="color:#f1f5f9">Compare</b> page runs all models on the same data side by side.<br>
+    <b style="color:#a78bfa">4.</b> The <b style="color:#f1f5f9">Ensemble</b> page combines them via majority vote.<br>
+    <b style="color:#a78bfa">5.</b> The <b style="color:#f1f5f9">Backtest Lab</b> routes each regime to the correct sub-strategy.
   </div>
 </div>
 """, unsafe_allow_html=True)

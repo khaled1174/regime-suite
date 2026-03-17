@@ -80,8 +80,8 @@ SHARED_CSS = """
         content: '';
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background:
-            radial-gradient(circle at 80% 20%, rgba(96,165,250,0.08), transparent 50%),
-            radial-gradient(circle at 20% 80%, rgba(167,139,250,0.06), transparent 50%);
+            radial-gradient(circle at 80% 20%, rgba(167,139,250,0.10), transparent 50%),
+            radial-gradient(circle at 20% 80%, rgba(139,92,246,0.08), transparent 50%);
         pointer-events: none;
         z-index: 0;
     }
@@ -117,7 +117,7 @@ SHARED_CSS = """
     }
     .hero-title {
         font-size: 1.2rem; font-weight: 700; letter-spacing: -0.3px;
-        background: linear-gradient(90deg, #60a5fa, #4ade80);
+        background: linear-gradient(90deg, #a78bfa, #4ade80);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         margin: 0; white-space: nowrap;
     }
@@ -140,7 +140,7 @@ SHARED_CSS = """
     .metric-grid > .metric-card:nth-child(4) { animation-delay: 0.15s; }
     .metric-grid > .metric-card:nth-child(5) { animation-delay: 0.20s; }
     .metric-grid > .metric-card:nth-child(6) { animation-delay: 0.25s; }
-    .metric-card:hover { transform: translateY(-1px); border-color: rgba(96,165,250,0.3); }
+    .metric-card:hover { transform: translateY(-1px); border-color: rgba(167,139,250,0.3); }
     .metric-card.green  { border-top: 3px solid #4ade80; }
     .metric-card.red    { border-top: 3px solid #f87171; }
     .metric-card.gray   { border-top: 3px solid #94a3b8; }
@@ -232,8 +232,8 @@ SHARED_CSS = """
         background: rgba(255,255,255,0.05);
         color: #94a3b8;
     }
-    .preset-btn:hover { border-color: rgba(96,165,250,0.3); color: #f1f5f9; }
-    .preset-btn.active { background: rgba(96,165,250,0.15); border-color: #60a5fa; color: #60a5fa; }
+    .preset-btn:hover { border-color: rgba(167,139,250,0.3); color: #f1f5f9; }
+    .preset-btn.active { background: rgba(167,139,250,0.15); border-color: #a78bfa; color: #a78bfa; }
 
     hr { border-color: rgba(255,255,255,0.1) !important; }
 
