@@ -25,7 +25,11 @@ def load_market_data(ticker: str, lookback_years: int = 10) -> pd.DataFrame:
     start = end - pd.DateOffset(years=lookback_years)
 
     try:
-        raw = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
+        raw = yf.download(
+            ticker, start=start, end=end,
+            progress=False, auto_adjust=True,
+            timeout=15,
+        )
     except Exception:
         return pd.DataFrame()
 
