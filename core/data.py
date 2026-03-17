@@ -9,8 +9,14 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import warnings
+import concurrent.futures
 
 warnings.filterwarnings("ignore")
+
+
+def _download_yf(ticker, start, end):
+    """Run yfinance download in a thread so we can enforce a timeout."""
+    return yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -25,11 +31,9 @@ def load_market_data(ticker: str, lookback_years: int = 10) -> pd.DataFrame:
     start = end - pd.DateOffset(years=lookback_years)
 
     try:
-        raw = yf.download(
-            ticker, start=start, end=end,
-            progress=False, auto_adjust=True,
-            timeout=15,
-        )
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            future = pool.submit(_download_yf, ticker, start, end)
+            raw = future.result(timeout=30)
     except Exception:
         return pd.DataFrame()
 
