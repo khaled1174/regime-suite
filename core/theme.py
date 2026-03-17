@@ -83,7 +83,7 @@ SHARED_CSS = """
             radial-gradient(circle at 80% 20%, rgba(167,139,250,0.10), transparent 50%),
             radial-gradient(circle at 20% 80%, rgba(139,92,246,0.08), transparent 50%);
         pointer-events: none;
-        z-index: 0;
+        z-index: -1;
     }
     section[data-testid="stSidebar"] {
         background-color: #0f172a;
@@ -95,6 +95,8 @@ SHARED_CSS = """
 
     /* ── CRITICAL: Kill Streamlit's default padding ── */
     .block-container {
+        position: relative;
+        z-index: 1;
         background: transparent !important;
         padding-top: 3rem !important;
         padding-bottom: 0 !important;
